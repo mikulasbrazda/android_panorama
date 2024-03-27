@@ -13,11 +13,11 @@ import java.util.ArrayList;
 
 public class ViewPagerAdapter extends PagerAdapter {
     Context context;
-    ArrayList<String> images;
+    ArrayList<Uri> images;
 
     LayoutInflater mlayoutInflater;
 
-    public ViewPagerAdapter(Context context, ArrayList<String> images) {
+    public ViewPagerAdapter(Context context, ArrayList<Uri> images) {
         this.context = context;
         this.images = images;
         mlayoutInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -39,7 +39,7 @@ public class ViewPagerAdapter extends PagerAdapter {
     public Object instantiateItem(ViewGroup container, int position) {
         View itemView = mlayoutInflater.inflate(R.layout.view_pager_item, container, false);
         ImageView imageView = itemView.findViewById(R.id.imageView);
-        imageView.setImageURI(Uri.parse(images.get(position)));
+        imageView.setImageURI(images.get(position));
         container.addView(itemView);
         return itemView;
     }

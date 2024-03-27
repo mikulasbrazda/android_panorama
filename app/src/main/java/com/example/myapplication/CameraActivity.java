@@ -19,6 +19,9 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -35,6 +38,7 @@ import android.app.AlertDialog;
 import android.widget.ImageView;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
@@ -42,6 +46,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResult;
+
 
 public class CameraActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -57,34 +66,11 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
 
     private ImageView galleryImageButton;
 
+    private ImageView panoramaImageButton;
+
+    ActivityResultLauncher<Intent> resultLauncher;
     public CameraActivity() {
         Log.i(TAG, "Instantiated new " + this.getClass());
-    }
-
-    private void verifyPermissions() {
-        List<String> permissionsNeeded = new ArrayList<>();
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            permissionsNeeded.add(Manifest.permission.CAMERA);
-        }
-
-        // Since your target is Android 13 (API level 34), consider checking for specific permissions only if needed.
-        // Note: For Android 10 (API level 29) and above, consider using scoped storage approach and MediaStore API for file access.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-            }
-        }
-
-        if (!permissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this, permissionsNeeded.toArray(new String[0]), MY_PERMISSIONS_REQUEST);
-        } else {
-            Log.d(TAG, "All permissions granted");
-            mOpenCvCameraView.setCameraPermissionGranted();
-        }
     }
 
     @Override
@@ -124,10 +110,44 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
             public void onClick(View v) {
                 startActivity(new Intent(CameraActivity.this, GalleryActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
             }
+
+        });
+        panoramaImageButton = findViewById(R.id.panorama_icon);
+        panoramaImageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(CameraActivity.this, PanoramaActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+            }
         });
 
-
     }
+
+    private void verifyPermissions() {
+        List<String> permissionsNeeded = new ArrayList<>();
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            permissionsNeeded.add(Manifest.permission.CAMERA);
+        }
+
+        // Since your target is Android 13 (API level 34), consider checking for specific permissions only if needed.
+        // Note: For Android 10 (API level 29) and above, consider using scoped storage approach and MediaStore API for file access.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+        }
+
+        if (!permissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this, permissionsNeeded.toArray(new String[0]), MY_PERMISSIONS_REQUEST);
+        } else {
+            Log.d(TAG, "All permissions granted");
+            mOpenCvCameraView.setCameraPermissionGranted();
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -177,8 +197,6 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
         // Assuming the intention is to flip the image as if rotating by 90 degrees clockwise
         // For an actual 90-degree rotation, you would use Core.rotate()
         Core.flip(saveImage.t(), saveImage, 1); // This performs a transpose followed by a flip, effectively rotating the image by 90 degrees
-        Imgproc.cvtColor(saveImage, saveImage, Imgproc.COLOR_RGBA2BGRA);
-
         saveImageToGallery(saveImage);
     }
 
@@ -188,8 +206,8 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
         Utils.matToBitmap(mRgba, bitmap);
 
         ContentValues values = new ContentValues();
-        values.put(MediaStore.Images.Media.DISPLAY_NAME, "Image_" + System.currentTimeMillis() + ".png");
-        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, "Image_" + System.currentTimeMillis() + ".jpg");
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpg");
         values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + File.separator + "myapplication");
 
         Uri uri = null;
@@ -202,7 +220,7 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
             try (OutputStream stream = resolver.openOutputStream(uri)) {
                 if (stream == null) throw new IOException("Failed to open output stream.");
 
-                if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream))
+                if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream))
                     throw new IOException("Failed to save bitmap.");
             }
         } catch (IOException e) {
@@ -217,10 +235,6 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        verifyPermissions();
-    }
-
-    private void processCameraPermission(@NonNull int[] grantResults) {
         Log.d(TAG, "processCameraPermission: " + grantResults.length);
         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "Camera permission granted");

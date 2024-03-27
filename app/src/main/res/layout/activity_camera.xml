@@ -31,9 +31,12 @@
             android:src="@drawable/camera_icon" />
 
         <ImageView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:layout_marginTop="10dp"
+            android:id="@+id/panorama_icon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="30dp"
+            android:layout_marginLeft="45dp"
+            android:src="@drawable/panorama"
             />
     </LinearLayout>
 </FrameLayout>
