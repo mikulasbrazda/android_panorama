@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -50,6 +51,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResult;
+
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 
 public class CameraActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
@@ -116,7 +119,7 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
         panoramaImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(CameraActivity.this, PanoramaActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+                showChoiceDialog();
             }
         });
 
@@ -216,7 +219,6 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
         try {
             uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
             if (uri == null) throw new IOException("Failed to create new MediaStore record.");
-            Log.d(TAG,"Image saved to gallery: " + uri.toString());
             try (OutputStream stream = resolver.openOutputStream(uri)) {
                 if (stream == null) throw new IOException("Failed to open output stream.");
 
@@ -277,5 +279,31 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
                 .create()
                 .show();
+    }
+
+    private void startActivityWithMethod(String method) {
+        Intent intent = new Intent(CameraActivity.this, PanoramaActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra("Method", method);
+        startActivity(intent);
+    }
+    public void showChoiceDialog() {
+
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        bottomSheetDialog.setContentView(R.layout.layout_bottom_sheet);
+        bottomSheetDialog.findViewById(R.id.option_open_cv).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivityWithMethod("OpenCV");
+                bottomSheetDialog.dismiss();
+            }
+        });
+        bottomSheetDialog.findViewById(R.id.option_light_glue).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivityWithMethod("LightGlue");
+                bottomSheetDialog.dismiss();
+            }
+        });
+        bottomSheetDialog.show();
     }
 }
